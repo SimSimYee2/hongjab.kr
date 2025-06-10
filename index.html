@@ -1,87 +1,33 @@
 <!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>혼잡도 지도</title>
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-      background-color: #121212;
-      font-family: sans-serif;
-      color: white;
-    }
-    #map {
-      height: 100%;
-      width: 100%;
-    }
-    #info {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      background: rgba(30, 30, 30, 0.8);
-      padding: 10px;
-      border-radius: 8px;
-      z-index: 100;
-    }
-  </style>
-</head>
-<body>
-  <div id="info">
-    <h2>실시간 혼잡도 지도</h2>
-    <p>관심 지역의 혼잡도를 확인하세요.</p>
-  </div>
-  <div id="map"></div>
+<html>
+  <head>
+    <title>Simple Marker</title>
+    <!-- API 키 삽입 -->
+    <script async
+      src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=console.debug&libraries=maps,marker&v=beta">
+    </script>
+    <style>
+      /* 지도 요소의 크기 설정 */
+      gmp-map {
+        height: 100%;
+      }
 
-  <script>
-    function initMap() {
-      const map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: 37.5665, lng: 126.9780 }, // 서울 중심 좌표
-        zoom: 13,
-        styles: [
-          { elementType: "geometry", stylers: [{ color: "#212121" }] },
-          { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-          { elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
-          { elementType: "labels.text.stroke", stylers: [{ color: "#212121" }] },
-          {
-            featureType: "administrative",
-            elementType: "geometry",
-            stylers: [{ color: "#757575" }],
-          },
-          {
-            featureType: "poi",
-            elementType: "geometry",
-            stylers: [{ color: "#2e2e2e" }],
-          },
-          {
-            featureType: "road",
-            elementType: "geometry",
-            stylers: [{ color: "#383838" }],
-          },
-          {
-            featureType: "transit",
-            elementType: "geometry",
-            stylers: [{ color: "#2f3948" }],
-          },
-          {
-            featureType: "water",
-            elementType: "geometry",
-            stylers: [{ color: "#000000" }],
-          },
-        ],
-      });
-
-      // 샘플 마커 (예: 혼잡 지역)
-      new google.maps.Marker({
-        position: { lat: 37.5665, lng: 126.9780 },
-        map,
-        title: "혼잡 지역",
-      });
-    }
-  </script>
-  <script async defer
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDdzoAa5qdInQ1YuXV97hfWrxfE_y9rN3o&callback=initMap">
-  </script>
-</body>
+      /* 전체 화면 채우기 */
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 중심 위치: 대한민국 (위도 35.9, 경도 127.7) -->
+    <gmp-map center="35.90785217285156,127.76695251464844" zoom="14" map-id="DEMO_MAP_ID">
+      <gmp-advanced-marker
+        position="35.90785217285156,127.76695251464844"
+        title="My location">
+      </gmp-advanced-marker>
+    </gmp-map>
+  </body>
 </html>
