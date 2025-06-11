@@ -1,143 +1,212 @@
 <!DOCTYPE html>
 <html lang="ko">
-  <head>
-    <meta charset="UTF-8" />
-    <title>여행객 혼잡도</title>
-    <script async defer
-      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDdzoAa5qdInQ1YuXV97hfWrxfE_y9rN3o&callback=initMap">
-    </script>
-    <style>
-      html, body {
-        height: 100%;
-        margin: 0;
-        background-color: #121212;
-        font-family: 'Segoe UI', sans-serif;
-        color: #fff;
-      }
+<head>
+  <meta charset="UTF-8" />
+  <title>여행객 혼잡도</title>
+  <!-- Google Maps API -->
+  <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDdzoAa5qdInQ1YuXV97hfWrxfE_y9rN3o&callback=initMap">
+  </script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      background-color: #121212;
+      font-family: 'Segoe UI', sans-serif;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+    }
 
-      header {
-        background-color: #1e1e1e;
-        padding: 1rem;
-        text-align: center;
-        font-size: 1.5rem;
-        font-weight: bold;
-        border-bottom: 1px solid #333;
-      }
+    header {
+      background-color: #1e1e1e;
+      padding: 1rem;
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+      border-bottom: 1px solid #333;
+    }
 
-      #map {
-        height: calc(100% - 150px);
-        width: 100%;
-      }
+    .main-content {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
 
-      .control-panel {
-        background-color: #1e1e1e;
-        padding: 1rem;
-        display: flex;
-        justify-content: space-around;
-        align-items: center;
-        border-top: 1px solid #333;
-      }
+    #map {
+      height: 100%;
+      flex: 2;
+    }
 
-      .legend {
-        display: flex;
-        gap: 1rem;
-        align-items: center;
-      }
+    .sidebar {
+      flex: 1;
+      background-color: #1e1e1e;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border-left: 1px solid #333;
+    }
 
-      .legend-item {
-        display: flex;
-        align-items: center;
-        gap: 0.3rem;
-      }
+    .control-panel {
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
 
-      .legend-color {
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        display: inline-block;
-      }
+    .legend {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
 
-      .low { background-color: green; }
-      .medium { background-color: orange; }
-      .high { background-color: red; }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
 
-      label {
-        font-size: 0.9rem;
-      }
+    .legend-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: inline-block;
+    }
 
-      input[type="range"] {
-        width: 200px;
-      }
-    </style>
-    <script>
-      let map;
-      const locations = [
-        { name: "서울", lat: 37.5665, lng: 126.9780 },
-        { name: "부산", lat: 35.1796, lng: 129.0756 },
-        { name: "제주", lat: 33.4996, lng: 126.5312 }
-      ];
+    .low { background-color: green; }
+    .medium { background-color: orange; }
+    .high { background-color: red; }
 
-      const markerColors = {
-        low: "http://maps.google.com/mapfiles/ms/icons/green-dot.png",
-        medium: "http://maps.google.com/mapfiles/ms/icons/orange-dot.png",
-        high: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
-      };
+    label {
+      font-size: 0.9rem;
+    }
 
-      const markers = [];
+    input[type="range"] {
+      width: 200px;
+    }
 
-      function initMap() {
-        map = new google.maps.Map(document.getElementById("map"), {
-          center: { lat: 35.9078, lng: 127.7669 },
-          zoom: 7
-        });
+    canvas {
+      max-width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <header>여행객 혼잡도 지도</header>
 
-        // 처음에 모두 medium으로 표시
-        locations.forEach((loc, index) => {
-          const marker = new google.maps.Marker({
-            position: { lat: loc.lat, lng: loc.lng },
-            map,
-            title: `${loc.name} (혼잡도: medium)`,
-            icon: markerColors["medium"]
-          });
-          markers.push(marker);
-        });
-      }
-
-      function updateMarkers(level) {
-        markers.forEach((marker, index) => {
-          marker.setIcon(markerColors[level]);
-          marker.setTitle(`${locations[index].name} (혼잡도: ${level})`);
-        });
-      }
-    </script>
-  </head>
-  <body>
-    <header>여행객 혼잡도 지도</header>
+  <div class="main-content">
+    <!-- 지도 -->
     <div id="map"></div>
-    <div class="control-panel">
-      <div class="legend">
-        <div class="legend-item"><div class="legend-color low"></div> 낮음</div>
-        <div class="legend-item"><div class="legend-color medium"></div> 보통</div>
-        <div class="legend-item"><div class="legend-color high"></div> 높음</div>
+
+    <!-- 오른쪽 사이드바 -->
+    <div class="sidebar">
+      <div class="control-panel">
+        <div class="legend">
+          <div class="legend-item"><div class="legend-color low"></div> 낮음</div>
+          <div class="legend-item"><div class="legend-color medium"></div> 보통</div>
+          <div class="legend-item"><div class="legend-color high"></div> 높음</div>
+        </div>
+
+        <div>
+          <label for="congestionRange">혼잡도 조절:</label><br/>
+          <input type="range" id="congestionRange" min="0" max="2" step="1" value="1" oninput="onSliderChange(this.value)" />
+        </div>
       </div>
-      <div>
-        <label for="congestionRange">혼잡도 조절:</label><br/>
-        <input
-          type="range"
-          id="congestionRange"
-          min="0"
-          max="2"
-          step="1"
-          value="1"
-          oninput="onSliderChange(this.value)" />
-      </div>
+
+      <!-- 파이차트 -->
+      <canvas id="congestionChart" width="200" height="200"></canvas>
     </div>
-    <script>
-      function onSliderChange(value) {
-        const levels = ["low", "medium", "high"];
-        const level = levels[value];
-        updateMarkers(level);
-      }
-    </script>
-  </body>
+  </div>
+
+  <script>
+    let map;
+    const locations = [
+      { name: "서울", lat: 37.5665, lng: 126.9780 },
+      { name: "부산", lat: 35.1796, lng: 129.0756 },
+      { name: "제주", lat: 33.4996, lng: 126.5312 }
+    ];
+
+    const markerColors = {
+      low: "http://maps.google.com/mapfiles/ms/icons/green-dot.png",
+      medium: "http://maps.google.com/mapfiles/ms/icons/orange-dot.png",
+      high: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
+    };
+
+    const congestionLevels = ["low", "medium", "high"];
+    const markers = [];
+    let chart;
+
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 35.9078, lng: 127.7669 },
+        zoom: 7
+      });
+
+      locations.forEach((loc, index) => {
+        const marker = new google.maps.Marker({
+          position: { lat: loc.lat, lng: loc.lng },
+          map,
+          title: `${loc.name} (혼잡도: medium)`,
+          icon: markerColors["medium"]
+        });
+        markers.push(marker);
+      });
+
+      initChart(["서울", "부산", "제주"], [1, 1, 1]); // 임의 데이터
+    }
+
+    function updateMarkers(level) {
+      const values = [];
+
+      markers.forEach((marker, index) => {
+        marker.setIcon(markerColors[level]);
+        marker.setTitle(`${locations[index].name} (혼잡도: ${level})`);
+        values.push(Math.floor(Math.random() * 100 + 1)); // 임의 비율
+      });
+
+      updateChart(values);
+    }
+
+    function onSliderChange(value) {
+      const level = congestionLevels[value];
+      updateMarkers(level);
+    }
+
+    function initChart(labels, values) {
+      const ctx = document.getElementById('congestionChart').getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: '혼잡도 비율',
+            data: values,
+            backgroundColor: ['green', 'orange', 'red'],
+            borderColor: '#333',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              labels: {
+                color: 'white'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function updateChart(values) {
+      chart.data.datasets[0].data = values;
+      chart.update();
+    }
+  </script>
+</body>
 </html>
