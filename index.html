@@ -3,8 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <title>여행객 혼잡도</title>
-    <script async
-      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDdzoAa5qdInQ1YuXV97hfWrxfE_y9rN3o&callback=initMap&libraries=maps,marker&v=beta">
+    <!-- Google Maps JavaScript API -->
+    <script async defer
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDdzoAa5qdInQ1YuXV97hfWrxfE_y9rN3o&callback=initMap">
     </script>
     <style>
       html,
@@ -25,15 +26,15 @@
         border-bottom: 1px solid #333;
       }
 
-      gmp-map {
-        height: calc(100% - 64px);
+      #map {
+        height: calc(100% - 64px); /* header 제외 */
         width: 100%;
-        display: block;
       }
     </style>
     <script>
       function initMap() {
-        const congestionLevel = "medium"; // ★ 혼잡도: low, medium, high 중 선택
+        // 임의의 혼잡도 설정
+        const congestionLevel = "medium"; // low, medium, high
 
         const markerColors = {
           low: "http://maps.google.com/mapfiles/ms/icons/green-dot.png",
@@ -41,10 +42,9 @@
           high: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
         };
 
-        const map = new google.maps.Map(document.querySelector("gmp-map"), {
+        const map = new google.maps.Map(document.getElementById("map"), {
           center: { lat: 35.907852, lng: 127.766953 },
           zoom: 14,
-          mapId: "DEMO_MAP_ID",
         });
 
         new google.maps.Marker({
@@ -58,6 +58,6 @@
   </head>
   <body>
     <header>여행객 혼잡도 지도</header>
-    <gmp-map></gmp-map>
+    <div id="map"></div>
   </body>
 </html>
