@@ -1,35 +1,63 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
   <head>
+    <meta charset="UTF-8" />
     <title>여행객 혼잡도</title>
-    <!-- Google Maps API 키 삽입 -->
     <script async
-      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDdzoAa5qdInQ1YuXV97hfWrxfE_y9rN3o&callback=console.debug&libraries=maps,marker&v=beta">
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDdzoAa5qdInQ1YuXV97hfWrxfE_y9rN3o&callback=initMap&libraries=maps,marker&v=beta">
     </script>
     <style>
       html,
       body {
         height: 100%;
         margin: 0;
-        padding: 0;
-        background-color: #121212; /* 다크 배경 */
-        color: #ffffff;
-        font-family: Arial, sans-serif;
+        background-color: #121212;
+        font-family: 'Segoe UI', sans-serif;
+        color: #fff;
+      }
+
+      header {
+        background-color: #1e1e1e;
+        padding: 1rem;
+        text-align: center;
+        font-size: 1.5rem;
+        font-weight: bold;
+        border-bottom: 1px solid #333;
       }
 
       gmp-map {
-        height: 100%;
+        height: calc(100% - 64px);
         width: 100%;
         display: block;
       }
     </style>
+    <script>
+      function initMap() {
+        const congestionLevel = "medium"; // ★ 혼잡도: low, medium, high 중 선택
+
+        const markerColors = {
+          low: "http://maps.google.com/mapfiles/ms/icons/green-dot.png",
+          medium: "http://maps.google.com/mapfiles/ms/icons/orange-dot.png",
+          high: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
+        };
+
+        const map = new google.maps.Map(document.querySelector("gmp-map"), {
+          center: { lat: 35.907852, lng: 127.766953 },
+          zoom: 14,
+          mapId: "DEMO_MAP_ID",
+        });
+
+        new google.maps.Marker({
+          position: { lat: 35.907852, lng: 127.766953 },
+          map,
+          title: `혼잡도: ${congestionLevel}`,
+          icon: markerColors[congestionLevel],
+        });
+      }
+    </script>
   </head>
   <body>
-    <gmp-map center="35.90785217285156,127.76695251464844" zoom="14" map-id="DEMO_MAP_ID">
-      <gmp-advanced-marker
-        position="35.90785217285156,127.76695251464844"
-        title="여행객 혼잡도">
-      </gmp-advanced-marker>
-    </gmp-map>
+    <header>여행객 혼잡도 지도</header>
+    <gmp-map></gmp-map>
   </body>
 </html>
