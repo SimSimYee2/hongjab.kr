@@ -3,13 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <title>여행객 혼잡도</title>
-    <!-- Google Maps JavaScript API -->
     <script async defer
       src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDdzoAa5qdInQ1YuXV97hfWrxfE_y9rN3o&callback=initMap">
     </script>
     <style>
-      html,
-      body {
+      html, body {
         height: 100%;
         margin: 0;
         background-color: #121212;
@@ -27,31 +25,88 @@
       }
 
       #map {
-        height: calc(100% - 64px); /* header 제외 */
+        height: calc(100% - 150px);
         width: 100%;
+      }
+
+      .control-panel {
+        background-color: #1e1e1e;
+        padding: 1rem;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        border-top: 1px solid #333;
+      }
+
+      .legend {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+      }
+
+      .legend-color {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        display: inline-block;
+      }
+
+      .low { background-color: green; }
+      .medium { background-color: orange; }
+      .high { background-color: red; }
+
+      label {
+        font-size: 0.9rem;
+      }
+
+      input[type="range"] {
+        width: 200px;
       }
     </style>
     <script>
+      let map;
+      const locations = [
+        { name: "서울", lat: 37.5665, lng: 126.9780 },
+        { name: "부산", lat: 35.1796, lng: 129.0756 },
+        { name: "제주", lat: 33.4996, lng: 126.5312 }
+      ];
+
+      const markerColors = {
+        low: "http://maps.google.com/mapfiles/ms/icons/green-dot.png",
+        medium: "http://maps.google.com/mapfiles/ms/icons/orange-dot.png",
+        high: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
+      };
+
+      const markers = [];
+
       function initMap() {
-        // 임의의 혼잡도 설정
-        const congestionLevel = "medium"; // low, medium, high
-
-        const markerColors = {
-          low: "http://maps.google.com/mapfiles/ms/icons/green-dot.png",
-          medium: "http://maps.google.com/mapfiles/ms/icons/orange-dot.png",
-          high: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
-        };
-
-        const map = new google.maps.Map(document.getElementById("map"), {
-          center: { lat: 35.907852, lng: 127.766953 },
-          zoom: 14,
+        map = new google.maps.Map(document.getElementById("map"), {
+          center: { lat: 35.9078, lng: 127.7669 },
+          zoom: 7
         });
 
-        new google.maps.Marker({
-          position: { lat: 35.907852, lng: 127.766953 },
-          map,
-          title: `혼잡도: ${congestionLevel}`,
-          icon: markerColors[congestionLevel],
+        // 처음에 모두 medium으로 표시
+        locations.forEach((loc, index) => {
+          const marker = new google.maps.Marker({
+            position: { lat: loc.lat, lng: loc.lng },
+            map,
+            title: `${loc.name} (혼잡도: medium)`,
+            icon: markerColors["medium"]
+          });
+          markers.push(marker);
+        });
+      }
+
+      function updateMarkers(level) {
+        markers.forEach((marker, index) => {
+          marker.setIcon(markerColors[level]);
+          marker.setTitle(`${locations[index].name} (혼잡도: ${level})`);
         });
       }
     </script>
@@ -59,5 +114,30 @@
   <body>
     <header>여행객 혼잡도 지도</header>
     <div id="map"></div>
+    <div class="control-panel">
+      <div class="legend">
+        <div class="legend-item"><div class="legend-color low"></div> 낮음</div>
+        <div class="legend-item"><div class="legend-color medium"></div> 보통</div>
+        <div class="legend-item"><div class="legend-color high"></div> 높음</div>
+      </div>
+      <div>
+        <label for="congestionRange">혼잡도 조절:</label><br/>
+        <input
+          type="range"
+          id="congestionRange"
+          min="0"
+          max="2"
+          step="1"
+          value="1"
+          oninput="onSliderChange(this.value)" />
+      </div>
+    </div>
+    <script>
+      function onSliderChange(value) {
+        const levels = ["low", "medium", "high"];
+        const level = levels[value];
+        updateMarkers(level);
+      }
+    </script>
   </body>
 </html>
