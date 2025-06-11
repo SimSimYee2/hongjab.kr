@@ -2,12 +2,19 @@
 <html>
   <head>
     <title>Simple Marker</title>
-    <script async src="https://maps.googleapis.com/maps/api/js?key=당신의_API_KEY&callback=console.debug"></script>
+    <!-- API 키 삽입 -->
+    <script async
+      src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=console.debug&libraries=maps,marker&v=beta">
+    </script>
     <style>
+      /* 지도 요소의 크기 설정 */
       gmp-map {
         height: 100%;
       }
-      html, body {
+
+      /* 전체 화면 채우기 */
+      html,
+      body {
         height: 100%;
         margin: 0;
         padding: 0;
@@ -15,8 +22,12 @@
     </style>
   </head>
   <body>
-    <gmp-map center="40.12150192260742,-100.45039367675781" zoom="4" map-id="DEMO_MAP_ID">
-      <gmp-advanced-marker position="40.12150192260742,-100.45039367675781" title="My location"></gmp-advanced-marker>
+    <!-- 중심 위치: 대한민국 (위도 35.9, 경도 127.7) -->
+    <gmp-map center="35.90785217285156,127.76695251464844" zoom="14" map-id="DEMO_MAP_ID">
+      <gmp-advanced-marker
+        position="35.90785217285156,127.76695251464844"
+        title="My location">
+      </gmp-advanced-marker>
     </gmp-map>
   </body>
 </html>
