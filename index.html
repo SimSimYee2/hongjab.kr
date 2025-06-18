@@ -93,6 +93,26 @@
     canvas {
       max-width: 100%;
     }
+
+    input[type="text"] {
+      padding: 6px;
+      border: none;
+      border-radius: 4px;
+      width: 200px;
+    }
+
+    button {
+      padding: 6px 12px;
+      border: none;
+      background-color: #333;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #555;
+    }
   </style>
 </head>
 <body>
@@ -112,8 +132,8 @@
         </div>
 
         <div>
-          <label for="congestionRange">혼잡도 조절:</label><br/>
-          <input type="range" id="congestionRange" min="0" max="2" step="1" value="1" oninput="onSliderChange(this.value)" />
+          <input type="text" id="placeInput" placeholder="여행지를 입력하세요" />
+          <button onclick="searchPlace()">검색</button>
         </div>
       </div>
 
@@ -124,11 +144,9 @@
 
   <script>
     let map;
-    const locations = [
-      { name: "서울", lat: 37.5665, lng: 126.9780 },
-      { name: "부산", lat: 35.1796, lng: 129.0756 },
-      { name: "제주", lat: 33.4996, lng: 126.5312 }
-    ];
+    const markers = [];
+    const locations = [];
+    let chart;
 
     const markerColors = {
       low: "http://maps.google.com/mapfiles/ms/icons/green-dot.png",
@@ -136,9 +154,7 @@
       high: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
     };
 
-    const congestionLevels = ["low", "medium", "high"];
-    const markers = [];
-    let chart;
+    const serpApiKey = "c090b8f837f5e81533876305ad4a5d846d527fb40e6aa8e74f15b81f31a2dc58";
 
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
@@ -146,34 +162,70 @@
         zoom: 7
       });
 
-      locations.forEach((loc, index) => {
-        const marker = new google.maps.Marker({
-          position: { lat: loc.lat, lng: loc.lng },
-          map,
-          title: `${loc.name} (혼잡도: medium)`,
-          icon: markerColors["medium"]
-        });
-        markers.push(marker);
-      });
-
-      initChart(["서울", "부산", "제주"], [1, 1, 1]); // 임의 데이터
+      initChart(['낮음', '보통', '높음'], [0, 0, 0]);
     }
 
-    function updateMarkers(level) {
-      const values = [];
+    async function searchPlace() {
+      const place = document.getElementById("placeInput").value;
+      if (!place) return alert("여행지를 입력해주세요!");
 
-      markers.forEach((marker, index) => {
-        marker.setIcon(markerColors[level]);
-        marker.setTitle(`${locations[index].name} (혼잡도: ${level})`);
-        values.push(Math.floor(Math.random() * 100 + 1)); // 임의 비율
+      // 1. SerpAPI로 검색
+      const serpUrl = `https://serpapi.com/search.json?q=${encodeURIComponent(place + " 혼잡도")}&engine=google&hl=ko&api_key=${serpApiKey}`;
+      const response = await fetch(serpUrl);
+      const data = await response.json();
+
+      if (!data.organic_results || data.organic_results.length === 0) {
+        alert("검색 결과가 없습니다.");
+        return;
+      }
+
+      // 2. 혼잡도 추정
+      let summary = "";
+      data.organic_results.slice(0, 5).forEach(r => summary += r.snippet || "");
+      const score = estimateCongestion(summary);
+      const level = scoreToLevel(score);
+
+      // 3. 위치 정보 가져오기
+      const geoResp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(place)}`);
+      const geoData = await geoResp.json();
+      if (!geoData || geoData.length === 0) {
+        alert("위치를 찾을 수 없습니다.");
+        return;
+      }
+
+      const lat = parseFloat(geoData[0].lat);
+      const lng = parseFloat(geoData[0].lon);
+
+      const marker = new google.maps.Marker({
+        position: { lat, lng },
+        map,
+        title: `${place} (혼잡도: ${level})`,
+        icon: markerColors[level]
       });
 
-      updateChart(values);
+      markers.push(marker);
+      locations.push({ name: place, level });
+
+      updateChartFromMarkers();
+      map.setCenter({ lat, lng });
+      map.setZoom(11);
     }
 
-    function onSliderChange(value) {
-      const level = congestionLevels[value];
-      updateMarkers(level);
+    function estimateCongestion(text) {
+      const high = ["혼잡", "붐빔", "주차 불가", "사람 많음"];
+      const low = ["한산", "여유", "원활", "사람 없음"];
+      let score = 5;
+
+      high.forEach(word => { if (text.includes(word)) score += 2; });
+      low.forEach(word => { if (text.includes(word)) score -= 2; });
+
+      return Math.max(0, Math.min(score, 10));
+    }
+
+    function scoreToLevel(score) {
+      if (score >= 7) return "high";
+      if (score >= 4) return "medium";
+      return "low";
     }
 
     function initChart(labels, values) {
@@ -183,7 +235,7 @@
         data: {
           labels: labels,
           datasets: [{
-            label: '혼잡도 비율',
+            label: '혼잡도 분포',
             data: values,
             backgroundColor: ['green', 'orange', 'red'],
             borderColor: '#333',
@@ -203,8 +255,10 @@
       });
     }
 
-    function updateChart(values) {
-      chart.data.datasets[0].data = values;
+    function updateChartFromMarkers() {
+      const count = { low: 0, medium: 0, high: 0 };
+      locations.forEach(loc => count[loc.level]++);
+      chart.data.datasets[0].data = [count.low, count.medium, count.high];
       chart.update();
     }
   </script>
