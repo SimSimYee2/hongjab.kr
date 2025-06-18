@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>여행객 혼잡도 지도 (검색창 포함)</title>
+  <title>여행객 혼잡도 지도 (검색 + 원 표시)</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     html, body {
@@ -76,7 +76,6 @@
       background-color: #1e1e1e;
       border-radius: 8px;
     }
-    /* 검색창 숨기기 기본 */
     #searchBox {
       display: none;
       margin-top: 1rem;
@@ -95,7 +94,7 @@
   </style>
 </head>
 <body>
-  <header>여행객 혼잡도 지도 (검색창 포함)</header>
+  <header>여행객 혼잡도 지도 (검색 + 원 표시)</header>
   <div class="main-content">
     <div id="map"></div>
     <div class="sidebar">
@@ -111,7 +110,6 @@
         </div>
         <button id="showSearchBtn" onclick="toggleSearchBox()">혼잡도 검색</button>
 
-        <!-- 검색창 -->
         <div id="searchBox">
           <input type="text" id="searchInput" placeholder="검색어 입력 (예: 경복궁)" />
           <button onclick="searchLocation()">검색 실행</button>
@@ -125,7 +123,6 @@
   <script>
     const serpApiKey = "c090b8f837f5e81533876305ad4a5a846d527fb40e6aaa8e74f15b81f31a2dc58";
 
-    // 초기 위치 리스트
     let locations = [
       { name: "서울", lat: 37.5665, lng: 126.9780 },
       { name: "부산", lat: 35.1796, lng: 129.0756 },
@@ -142,6 +139,7 @@
 
     let map, chart;
     const markers = [];
+    const circles = []; // 원 객체 저장용 배열
 
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
@@ -149,16 +147,17 @@
         zoom: 7
       });
 
-      // 초기 마커 생성
+      // 초기 마커 및 원 추가
       locations.forEach((loc) => {
-        addMarker(loc);
+        addMarkerWithCircle(loc);
       });
 
       initChart(locations.map(loc => loc.name), locations.map(() => 33));
     }
 
-    // 마커 추가 함수
-    function addMarker(location, level = "medium") {
+    // 마커 및 원 추가 함수
+    function addMarkerWithCircle(location, level = "medium") {
+      // 마커 생성
       const marker = new google.maps.Marker({
         position: { lat: location.lat, lng: location.lng },
         map: map,
@@ -166,25 +165,46 @@
         icon: markerColors[level]
       });
       markers.push(marker);
+
+      // 원 생성 (반경 300m)
+      const circle = new google.maps.Circle({
+        strokeColor: markerColors[level],
+        strokeOpacity: 0.8,
+        strokeWeight: 2,
+        fillColor: markerColors[level],
+        fillOpacity: 0.15,
+        map: map,
+        center: { lat: location.lat, lng: location.lng },
+        radius: 300
+      });
+      circles.push(circle);
     }
 
-    // 모든 마커 제거
-    function clearMarkers() {
+    // 기존 마커와 원 모두 제거
+    function clearMarkersAndCircles() {
       markers.forEach(marker => marker.setMap(null));
       markers.length = 0;
+      circles.forEach(circle => circle.setMap(null));
+      circles.length = 0;
     }
 
-    // 슬라이더 변경 이벤트
     function onSliderChange(value) {
       const level = congestionLevels[value];
+      // 마커, 원 색상 변경
       markers.forEach((marker, i) => {
         marker.setIcon(markerColors[level]);
         marker.setTitle(`${locations[i].name} (혼잡도: ${level})`);
       });
+      circles.forEach(circle => {
+        circle.setOptions({
+          strokeColor: markerColors[level],
+          fillColor: markerColors[level]
+        });
+      });
+
       updateChart(new Array(locations.length).fill(Math.floor(Math.random() * 100)));
     }
 
-    // 차트 초기화
     function initChart(labels, values) {
       const ctx = document.getElementById('congestionChart').getContext('2d');
       chart = new Chart(ctx, {
@@ -223,7 +243,7 @@
       }
     }
 
-    // 검색 실행 함수
+    // 검색 실행
     async function searchLocation() {
       const query = document.getElementById("searchInput").value.trim();
       if (!query) {
@@ -232,37 +252,29 @@
       }
 
       try {
-        // SerpAPI에서 장소 검색
         const url = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(query)}&hl=ko&api_key=${serpApiKey}`;
         const response = await fetch(url);
         if (!response.ok) throw new Error("API 응답 실패");
 
         const data = await response.json();
 
-        // 결과에서 장소 위치(임시로 첫 결과만 사용)
         const place = data.local_results?.[0];
         if (!place) {
           alert("검색 결과가 없습니다.");
           return;
         }
 
-        // 위치 정보 갱신
         const lat = place.latitude;
         const lng = place.longitude;
         const name = place.title || query;
 
-        // 기존 마커 제거 및 위치 리스트 초기화 (여러 검색 위치를 쌓고 싶으면 이 부분 변경 가능)
-        clearMarkers();
+        clearMarkersAndCircles();
         locations = [{ name, lat, lng }];
+        addMarkerWithCircle({ name, lat, lng }, "medium");
 
-        // 새 마커 추가
-        addMarker({ name, lat, lng }, "medium");
-
-        // 지도 중심 이동 및 줌
         map.setCenter({ lat, lng });
         map.setZoom(14);
 
-        // 차트 갱신
         initChart([name], [100]);
 
         toggleSearchBox();
