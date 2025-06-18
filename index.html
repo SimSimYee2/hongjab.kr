@@ -2,127 +2,30 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>여행객 혼잡도</title>
-  <!-- Google Maps API -->
+  <title>여행객 혼잡도 지도</title>
   <script async defer
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDdzoAa5qdInQ1YuXV97hfWrxfE_y9rN3o&callback=initMap">
   </script>
-  <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-      background-color: #121212;
-      font-family: 'Segoe UI', sans-serif;
-      color: #fff;
-      display: flex;
-      flex-direction: column;
-    }
-
-    header {
-      background-color: #1e1e1e;
-      padding: 1rem;
-      text-align: center;
-      font-size: 1.5rem;
-      font-weight: bold;
-      border-bottom: 1px solid #333;
-    }
-
-    .main-content {
-      display: flex;
-      flex: 1;
-      overflow: hidden;
-    }
-
-    #map {
-      height: 100%;
-      flex: 2;
-    }
-
+    body { margin: 0; background-color: #121212; color: white; font-family: 'Segoe UI', sans-serif; }
+    header { background: #1e1e1e; padding: 1rem; text-align: center; font-size: 1.5rem; font-weight: bold; }
+    .main-content { display: flex; height: calc(100vh - 60px); }
+    #map { flex: 2; }
     .sidebar {
-      flex: 1;
-      background-color: #1e1e1e;
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      border-left: 1px solid #333;
+      flex: 1; background: #1e1e1e; padding: 1rem; display: flex; flex-direction: column;
+      justify-content: space-between; border-left: 1px solid #333;
     }
-
-    .control-panel {
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1rem;
-    }
-
-    .legend {
-      display: flex;
-      gap: 1rem;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 0.3rem;
-    }
-
-    .legend-color {
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      display: inline-block;
-    }
-
-    .low { background-color: green; }
-    .medium { background-color: orange; }
-    .high { background-color: red; }
-
-    label {
-      font-size: 0.9rem;
-    }
-
-    input[type="range"] {
-      width: 200px;
-    }
-
-    canvas {
-      max-width: 100%;
-    }
-
-    input[type="text"] {
-      padding: 6px;
-      border: none;
-      border-radius: 4px;
-      width: 200px;
-    }
-
-    button {
-      padding: 6px 12px;
-      border: none;
-      background-color: #333;
-      color: white;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background-color: #555;
-    }
+    .legend, .control-panel { display: flex; flex-direction: column; gap: 1rem; }
+    .legend-item { display: flex; align-items: center; gap: 0.5rem; }
+    .legend-color { width: 16px; height: 16px; border-radius: 50%; }
+    .low { background-color: green; } .medium { background-color: orange; } .high { background-color: red; }
   </style>
 </head>
 <body>
-  <header>여행객 혼잡도 지도</header>
-
+  <header>여행객 혼잡도 지도 (SerpAPI 기반)</header>
   <div class="main-content">
-    <!-- 지도 -->
     <div id="map"></div>
-
-    <!-- 오른쪽 사이드바 -->
     <div class="sidebar">
       <div class="control-panel">
         <div class="legend">
@@ -130,23 +33,23 @@
           <div class="legend-item"><div class="legend-color medium"></div> 보통</div>
           <div class="legend-item"><div class="legend-color high"></div> 높음</div>
         </div>
-
         <div>
-          <input type="text" id="placeInput" placeholder="여행지를 입력하세요" />
-          <button onclick="searchPlace()">검색</button>
+          <label>혼잡도 수동 조절:</label><br />
+          <input type="range" min="0" max="2" step="1" value="1" oninput="onSliderChange(this.value)">
         </div>
+        <button onclick="fetchSerpData()">혼잡도 검색</button>
       </div>
-
-      <!-- 파이차트 -->
       <canvas id="congestionChart" width="200" height="200"></canvas>
     </div>
   </div>
 
   <script>
-    let map;
-    const markers = [];
-    const locations = [];
-    let chart;
+    const serpApiKey = "c090b8f837f5e81533876305ad4a5a846d527fb40e6aaa8e74f15b81f31a2dc58"; // SerpAPI 키
+    const locations = [
+      { name: "서울", lat: 37.5665, lng: 126.9780 },
+      { name: "부산", lat: 35.1796, lng: 129.0756 },
+      { name: "제주", lat: 33.4996, lng: 126.5312 }
+    ];
 
     const markerColors = {
       low: "http://maps.google.com/mapfiles/ms/icons/green-dot.png",
@@ -154,78 +57,39 @@
       high: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
     };
 
-    const serpApiKey = "c090b8f837f5e81533876305ad4a5d846d527fb40e6aa8e74f15b81f31a2dc58";
+    const congestionLevels = ["low", "medium", "high"];
+    let map, chart;
+    const markers = [];
 
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: 35.9078, lng: 127.7669 },
-        zoom: 7
+        center: { lat: 35.9078, lng: 127.7669 }, zoom: 7
       });
 
-      initChart(['낮음', '보통', '높음'], [0, 0, 0]);
-    }
-
-    async function searchPlace() {
-      const place = document.getElementById("placeInput").value;
-      if (!place) return alert("여행지를 입력해주세요!");
-
-      // 1. SerpAPI로 검색
-      const serpUrl = `https://serpapi.com/search.json?q=${encodeURIComponent(place + " 혼잡도")}&engine=google&hl=ko&api_key=${serpApiKey}`;
-      const response = await fetch(serpUrl);
-      const data = await response.json();
-
-      if (!data.organic_results || data.organic_results.length === 0) {
-        alert("검색 결과가 없습니다.");
-        return;
-      }
-
-      // 2. 혼잡도 추정
-      let summary = "";
-      data.organic_results.slice(0, 5).forEach(r => summary += r.snippet || "");
-      const score = estimateCongestion(summary);
-      const level = scoreToLevel(score);
-
-      // 3. 위치 정보 가져오기
-      const geoResp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(place)}`);
-      const geoData = await geoResp.json();
-      if (!geoData || geoData.length === 0) {
-        alert("위치를 찾을 수 없습니다.");
-        return;
-      }
-
-      const lat = parseFloat(geoData[0].lat);
-      const lng = parseFloat(geoData[0].lon);
-
-      const marker = new google.maps.Marker({
-        position: { lat, lng },
-        map,
-        title: `${place} (혼잡도: ${level})`,
-        icon: markerColors[level]
+      locations.forEach((loc) => {
+        const marker = new google.maps.Marker({
+          position: { lat: loc.lat, lng: loc.lng },
+          map, title: `${loc.name} (혼잡도: medium)`,
+          icon: markerColors["medium"]
+        });
+        markers.push(marker);
       });
 
-      markers.push(marker);
-      locations.push({ name: place, level });
-
-      updateChartFromMarkers();
-      map.setCenter({ lat, lng });
-      map.setZoom(11);
+      initChart(["서울", "부산", "제주"], [33, 33, 34]); // 초기 데이터
     }
 
-    function estimateCongestion(text) {
-      const high = ["혼잡", "붐빔", "주차 불가", "사람 많음"];
-      const low = ["한산", "여유", "원활", "사람 없음"];
-      let score = 5;
-
-      high.forEach(word => { if (text.includes(word)) score += 2; });
-      low.forEach(word => { if (text.includes(word)) score -= 2; });
-
-      return Math.max(0, Math.min(score, 10));
+    function updateMarkers(level) {
+      const values = [];
+      markers.forEach((marker, i) => {
+        marker.setIcon(markerColors[level]);
+        marker.setTitle(`${locations[i].name} (혼잡도: ${level})`);
+        values.push(Math.floor(Math.random() * 100)); // 가상 데이터
+      });
+      updateChart(values);
     }
 
-    function scoreToLevel(score) {
-      if (score >= 7) return "high";
-      if (score >= 4) return "medium";
-      return "low";
+    function onSliderChange(value) {
+      updateMarkers(congestionLevels[value]);
     }
 
     function initChart(labels, values) {
@@ -233,9 +97,9 @@
       chart = new Chart(ctx, {
         type: 'pie',
         data: {
-          labels: labels,
+          labels,
           datasets: [{
-            label: '혼잡도 분포',
+            label: '혼잡도 비율',
             data: values,
             backgroundColor: ['green', 'orange', 'red'],
             borderColor: '#333',
@@ -243,23 +107,32 @@
           }]
         },
         options: {
-          responsive: true,
-          plugins: {
-            legend: {
-              labels: {
-                color: 'white'
-              }
-            }
-          }
+          plugins: { legend: { labels: { color: 'white' } } }
         }
       });
     }
 
-    function updateChartFromMarkers() {
-      const count = { low: 0, medium: 0, high: 0 };
-      locations.forEach(loc => count[loc.level]++);
-      chart.data.datasets[0].data = [count.low, count.medium, count.high];
+    function updateChart(values) {
+      chart.data.datasets[0].data = values;
       chart.update();
+    }
+
+    async function fetchSerpData() {
+      for (let i = 0; i < locations.length; i++) {
+        const q = `${locations[i].name} 여행지 혼잡도`;
+        const response = await fetch(`https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(q)}&hl=ko&api_key=${serpApiKey}`);
+        const data = await response.json();
+
+        const snippets = (data.organic_results || []).map(r => r.snippet).join(" ");
+        let level = "medium";
+        if (snippets.includes("혼잡") || snippets.includes("붐빔")) level = "high";
+        else if (snippets.includes("한산") || snippets.includes("여유")) level = "low";
+
+        // 마커와 차트 업데이트
+        markers[i].setIcon(markerColors[level]);
+        markers[i].setTitle(`${locations[i].name} (혼잡도: ${level})`);
+      }
+      updateChart([40, 30, 30]); // 실제 분석에 따라 조정 가능
     }
   </script>
 </body>
