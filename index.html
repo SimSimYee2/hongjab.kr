@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>여행객 혼잡도 지도 (수정본)</title>
+  <title>여행객 혼잡도 지도 (검색창 포함)</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     html, body {
@@ -76,10 +76,26 @@
       background-color: #1e1e1e;
       border-radius: 8px;
     }
+    /* 검색창 숨기기 기본 */
+    #searchBox {
+      display: none;
+      margin-top: 1rem;
+    }
+    #searchBox input[type="text"] {
+      width: 100%;
+      padding: 0.5rem;
+      font-size: 1rem;
+      border-radius: 4px;
+      border: none;
+      box-sizing: border-box;
+    }
+    #searchBox button {
+      margin-top: 0.5rem;
+    }
   </style>
 </head>
 <body>
-  <header>여행객 혼잡도 지도 (SerpAPI 기반)</header>
+  <header>여행객 혼잡도 지도 (검색창 포함)</header>
   <div class="main-content">
     <div id="map"></div>
     <div class="sidebar">
@@ -93,24 +109,29 @@
           <label for="congestionRange">혼잡도 수동 조절:</label><br />
           <input id="congestionRange" type="range" min="0" max="2" step="1" value="1" oninput="onSliderChange(this.value)">
         </div>
-        <button onclick="fetchSerpData()">혼잡도 검색</button>
+        <button id="showSearchBtn" onclick="toggleSearchBox()">혼잡도 검색</button>
+
+        <!-- 검색창 -->
+        <div id="searchBox">
+          <input type="text" id="searchInput" placeholder="검색어 입력 (예: 경복궁)" />
+          <button onclick="searchLocation()">검색 실행</button>
+          <button onclick="toggleSearchBox()">취소</button>
+        </div>
       </div>
       <canvas id="congestionChart" width="200" height="200"></canvas>
     </div>
   </div>
 
   <script>
-    // SerpAPI 키
     const serpApiKey = "c090b8f837f5e81533876305ad4a5a846d527fb40e6aaa8e74f15b81f31a2dc58";
 
-    // 위치 리스트
-    const locations = [
+    // 초기 위치 리스트
+    let locations = [
       { name: "서울", lat: 37.5665, lng: 126.9780 },
       { name: "부산", lat: 35.1796, lng: 129.0756 },
       { name: "제주", lat: 33.4996, lng: 126.5312 }
     ];
 
-    // 마커 색상 아이콘
     const markerColors = {
       low: "http://maps.google.com/mapfiles/ms/icons/green-dot.png",
       medium: "http://maps.google.com/mapfiles/ms/icons/orange-dot.png",
@@ -122,41 +143,45 @@
     let map, chart;
     const markers = [];
 
-    // 전역 함수로 정의 (Google Maps API callback용)
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
         center: { lat: 35.9078, lng: 127.7669 },
         zoom: 7
       });
 
-      // 초기 마커 생성 (기본 혼잡도 medium)
+      // 초기 마커 생성
       locations.forEach((loc) => {
-        const marker = new google.maps.Marker({
-          position: { lat: loc.lat, lng: loc.lng },
-          map: map,
-          title: `${loc.name} (혼잡도: medium)`,
-          icon: markerColors["medium"]
-        });
-        markers.push(marker);
+        addMarker(loc);
       });
 
-      initChart(locations.map(loc => loc.name), [33, 33, 34]);
+      initChart(locations.map(loc => loc.name), locations.map(() => 33));
     }
 
-    // 마커 아이콘 및 툴팁 업데이트 + 차트 업데이트
-    function updateMarkers(level) {
-      const values = [];
+    // 마커 추가 함수
+    function addMarker(location, level = "medium") {
+      const marker = new google.maps.Marker({
+        position: { lat: location.lat, lng: location.lng },
+        map: map,
+        title: `${location.name} (혼잡도: ${level})`,
+        icon: markerColors[level]
+      });
+      markers.push(marker);
+    }
+
+    // 모든 마커 제거
+    function clearMarkers() {
+      markers.forEach(marker => marker.setMap(null));
+      markers.length = 0;
+    }
+
+    // 슬라이더 변경 이벤트
+    function onSliderChange(value) {
+      const level = congestionLevels[value];
       markers.forEach((marker, i) => {
         marker.setIcon(markerColors[level]);
         marker.setTitle(`${locations[i].name} (혼잡도: ${level})`);
-        values.push(Math.floor(Math.random() * 100)); // 임의 값
       });
-      updateChart(values);
-    }
-
-    // 슬라이더 조작 이벤트
-    function onSliderChange(value) {
-      updateMarkers(congestionLevels[value]);
+      updateChart(new Array(locations.length).fill(Math.floor(Math.random() * 100)));
     }
 
     // 차트 초기화
@@ -165,7 +190,7 @@
       chart = new Chart(ctx, {
         type: 'pie',
         data: {
-          labels: labels,
+          labels,
           datasets: [{
             label: '혼잡도 비율',
             data: values,
@@ -180,42 +205,76 @@
       });
     }
 
-    // 차트 데이터 업데이트
     function updateChart(values) {
       chart.data.datasets[0].data = values;
       chart.update();
     }
 
-    // SerpAPI 검색 및 결과 반영
-    async function fetchSerpData() {
-      for (let i = 0; i < locations.length; i++) {
-        const q = `${locations[i].name} 여행지 혼잡도`;
-        try {
-          const response = await fetch(`https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(q)}&hl=ko&api_key=${serpApiKey}`);
-          if (!response.ok) {
-            console.error("서버 응답 오류", response.status);
-            continue;
-          }
-          const data = await response.json();
-
-          const snippets = (data.organic_results || []).map(r => r.snippet).join(" ");
-          let level = "medium";
-
-          if (snippets.includes("혼잡") || snippets.includes("붐빔")) level = "high";
-          else if (snippets.includes("한산") || snippets.includes("여유")) level = "low";
-
-          // 마커 및 타이틀 업데이트
-          markers[i].setIcon(markerColors[level]);
-          markers[i].setTitle(`${locations[i].name} (혼잡도: ${level})`);
-        } catch (error) {
-          console.error("데이터 검색 중 오류 발생:", error);
-        }
+    // 검색창 토글
+    function toggleSearchBox() {
+      const box = document.getElementById("searchBox");
+      const btn = document.getElementById("showSearchBtn");
+      if (box.style.display === "none" || box.style.display === "") {
+        box.style.display = "block";
+        btn.textContent = "검색창 닫기";
+      } else {
+        box.style.display = "none";
+        btn.textContent = "혼잡도 검색";
       }
-      updateChart([40, 30, 30]); // 예시값 (필요 시 동적으로 변경)
+    }
+
+    // 검색 실행 함수
+    async function searchLocation() {
+      const query = document.getElementById("searchInput").value.trim();
+      if (!query) {
+        alert("검색어를 입력해주세요.");
+        return;
+      }
+
+      try {
+        // SerpAPI에서 장소 검색
+        const url = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(query)}&hl=ko&api_key=${serpApiKey}`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("API 응답 실패");
+
+        const data = await response.json();
+
+        // 결과에서 장소 위치(임시로 첫 결과만 사용)
+        const place = data.local_results?.[0];
+        if (!place) {
+          alert("검색 결과가 없습니다.");
+          return;
+        }
+
+        // 위치 정보 갱신
+        const lat = place.latitude;
+        const lng = place.longitude;
+        const name = place.title || query;
+
+        // 기존 마커 제거 및 위치 리스트 초기화 (여러 검색 위치를 쌓고 싶으면 이 부분 변경 가능)
+        clearMarkers();
+        locations = [{ name, lat, lng }];
+
+        // 새 마커 추가
+        addMarker({ name, lat, lng }, "medium");
+
+        // 지도 중심 이동 및 줌
+        map.setCenter({ lat, lng });
+        map.setZoom(14);
+
+        // 차트 갱신
+        initChart([name], [100]);
+
+        toggleSearchBox();
+        document.getElementById("searchInput").value = "";
+
+      } catch (error) {
+        console.error(error);
+        alert("검색 중 오류가 발생했습니다.");
+      }
     }
   </script>
 
-  <!-- Google Maps API 스크립트 (callback=initMap은 전역 함수 호출) -->
   <script async defer
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDdzoAa5qdInQ1YuXV97hfWrxfE_y9rN3o&callback=initMap">
   </script>
