@@ -83,12 +83,111 @@
   </div>
 
 <script>
+const markerColors = {
+  low: "http://maps.google.com/mapfiles/ms/icons/green-dot.png",
+  medium: "http://maps.google.com/mapfiles/ms/icons/orange-dot.png",
+  high: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
+};
+
+let map, chart;
+let markers = [], circles = [], locations = [];
+const congestionLevels = ["low", "medium", "high"];
+
+function initMap() {
+  map = new google.maps.Map(document.getElementById("map"), {
+    center: { lat: 35.9078, lng: 127.7669 }, zoom: 7
+  });
+  locations = [
+    { name: "서울", lat: 37.5665, lng: 126.9780 },
+    { name: "부산", lat: 35.1796, lng: 129.0756 },
+    { name: "제주", lat: 33.4996, lng: 126.5312 }
+  ];
+  locations.forEach(loc => addMarkerWithCircle(loc, "medium"));
+  initChart(locations.map(l => l.name), locations.map(() => 33));
+}
+
+function addMarkerWithCircle(location, level) {
+  const marker = new google.maps.Marker({
+    position: { lat: location.lat, lng: location.lng },
+    map,
+    title: `${location.name} (혼잡도: ${level})`,
+    icon: markerColors[level]
+  });
+  const circle = new google.maps.Circle({
+    strokeColor: markerColors[level], strokeOpacity: 0.8, strokeWeight: 2,
+    fillColor: markerColors[level], fillOpacity: 0.2,
+    map, center: { lat: location.lat, lng: location.lng }, radius: 1000
+  });
+  markers.push(marker);
+  circles.push(circle);
+}
+
+function clearMarkersAndCircles() {
+  markers.forEach(m => m.setMap(null));
+  circles.forEach(c => c.setMap(null));
+  markers = [];
+  circles = [];
+}
+
+function updateMarkers(level) {
+  clearMarkersAndCircles();
+  locations.forEach(loc => addMarkerWithCircle(loc, level));
+  updateChart(locations.map(() => Math.floor(Math.random() * 100)));
+}
+
+function onSliderChange(value) {
+  updateMarkers(congestionLevels[value]);
+}
+
+function initChart(labels, values) {
+  const ctx = document.getElementById('congestionChart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels,
+      datasets: [{
+        label: '혼잡도 비율',
+        data: values,
+        backgroundColor: ['green', 'orange', 'red'],
+        borderColor: '#333',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      plugins: { legend: { labels: { color: 'white' } } }
+    }
+  });
+}
+
+function updateChart(values) {
+  chart.data.datasets[0].data = values;
+  chart.update();
+}
+
+function toggleSearchBox() {
+  const box = document.getElementById("searchBox");
+  box.style.display = box.style.display === "none" ? "block" : "none";
+}
+
+function searchLocation() {
+  const query = document.getElementById("searchInput").value.trim();
+  if (!query) return alert("검색어를 입력해주세요.");
+  const lat = 37.5665 + (Math.random() - 0.5); // 테스트용 랜덤 좌표
+  const lng = 126.9780 + (Math.random() - 0.5);
+  const name = query;
+  clearMarkersAndCircles();
+  locations = [{ name, lat, lng }];
+  addMarkerWithCircle({ name, lat, lng }, "medium");
+  map.setCenter({ lat, lng });
+  map.setZoom(13);
+  initChart([name], [Math.floor(Math.random() * 100)]);
+}
+
 function toggleBox(id) {
   const box = document.getElementById(id);
   const otherBox = id === 'signupBox' ? 'loginBox' : 'signupBox';
   const other = document.getElementById(otherBox);
   other.classList.remove("show");
-
   if (box.classList.contains("show")) {
     box.classList.remove("show");
     setTimeout(() => box.style.display = "none", 300);
@@ -132,7 +231,6 @@ function updateUserInfo() {
   const email = localStorage.getItem("currentUser");
   const infoDiv = document.getElementById("userInfo");
   const controls = document.querySelectorAll(".requires-login input, .requires-login button");
-
   if (email) {
     const user = JSON.parse(localStorage.getItem("user_" + email));
     infoDiv.textContent = `환영합니다, ${user.name}님!`;
@@ -142,6 +240,15 @@ function updateUserInfo() {
     controls.forEach(el => el.disabled = true);
   }
 }
+
+window.addEventListener("load", () => {
+  updateUserInfo();
+  if (typeof initMap === "function") {
+    initMap();
+  } else {
+    console.error("initMap 함수가 정의되지 않았습니다.");
+  }
+});
 </script>
 </body>
 </html>
