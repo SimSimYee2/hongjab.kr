@@ -152,6 +152,14 @@
       };
     }
 
+    function getCircleColor(level) {
+      return {
+        1: '#00ff00',
+        2: '#ffcc00',
+        3: '#ff0000'
+      }[level];
+    }
+
     function searchPlace() {
       const place = autocomplete.getPlace();
       const input = document.getElementById("searchInput").value;
@@ -169,6 +177,19 @@
             icon: icon
           });
           marker.customLevel = level;
+
+          const circle = new google.maps.Circle({
+            strokeColor: getCircleColor(level),
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+            fillColor: getCircleColor(level),
+            fillOpacity: 0.3,
+            map: map,
+            center: location,
+            radius: 300
+          });
+          marker.circle = circle;
+
           markers.push(marker);
           map.setCenter(location);
           updateMarkerList();
@@ -186,6 +207,12 @@
       markers.forEach(marker => {
         marker.customLevel = value;
         marker.setIcon(getIconBySlider(value));
+        if (marker.circle) {
+          marker.circle.setOptions({
+            strokeColor: getCircleColor(value),
+            fillColor: getCircleColor(value)
+          });
+        }
       });
     }
 
@@ -219,6 +246,7 @@
         removeBtn.style.fontSize = "0.7rem";
         removeBtn.onclick = () => {
           m.setMap(null);
+          if (m.circle) m.circle.setMap(null);
           markers.splice(i, 1);
           updateMarkerList();
         };
