@@ -62,7 +62,6 @@
     <div class="sidebar">
       <div>
         <div class="user-info" id="userInfo"></div>
-
         <input type="text" id="searchInput" placeholder="장소 검색" />
         <button onclick="searchPlace()">검색</button>
 
@@ -139,20 +138,18 @@
         zoom: 12,
         center: center
       });
-
       autocomplete = new google.maps.places.Autocomplete(
         document.getElementById("searchInput")
       );
       autocomplete.bindTo("bounds", map);
     }
 
-    function getIconBySlider() {
-      const value = parseInt(document.getElementById("congestionSlider").value);
+    function getRandomCongestionLevel() {
+      const level = Math.floor(Math.random() * 3) + 1;
       return {
-        1: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png',
-        2: 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png',
-        3: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
-      }[value];
+        level,
+        icon: getIconBySlider(level)
+      };
     }
 
     function searchPlace() {
@@ -163,12 +160,15 @@
       geocoder.geocode({ address: input }, (results, status) => {
         if (status === "OK") {
           const location = results[0].geometry.location;
+          const { level, icon } = getRandomCongestionLevel();
+
           const marker = new google.maps.Marker({
             map: map,
             position: location,
             title: input,
-            icon: getIconBySlider()
+            icon: icon
           });
+          marker.customLevel = level;
           markers.push(marker);
           map.setCenter(location);
           updateMarkerList();
@@ -179,30 +179,56 @@
     }
 
     function updateAllMarkers() {
-      const icon = getIconBySlider();
+      const value = parseInt(document.getElementById("congestionSlider").value);
       const levelText = { 1: '낮음', 2: '중간', 3: '높음' };
-      const value = parseInt(document.getElementById('congestionSlider').value);
-      document.getElementById('congestionLevel').innerText = levelText[value];
+      document.getElementById("congestionLevel").innerText = levelText[value];
 
-      markers.forEach(marker => marker.setIcon(icon));
+      markers.forEach(marker => {
+        marker.customLevel = value;
+        marker.setIcon(getIconBySlider(value));
+      });
+    }
+
+    function getIconBySlider(level = null) {
+      const val = level ?? parseInt(document.getElementById("congestionSlider").value);
+      return {
+        1: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png',
+        2: 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png',
+        3: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
+      }[val];
     }
 
     function updateMarkerList() {
       const list = document.getElementById("markerList");
       list.innerHTML = "";
       markers.forEach((m, i) => {
-        const div = document.createElement("div");
-        div.className = "marker-item";
-        div.innerText = m.getTitle();
-        div.onclick = () => {
+        const container = document.createElement("div");
+        container.className = "marker-item";
+
+        const title = document.createElement("span");
+        title.innerText = `${m.getTitle()} (Lv.${m.customLevel})`;
+        title.style.cursor = "pointer";
+        title.onclick = () => {
           map.setCenter(m.getPosition());
           map.setZoom(14);
         };
-        list.appendChild(div);
+
+        const removeBtn = document.createElement("button");
+        removeBtn.innerText = "삭제";
+        removeBtn.style.marginLeft = "auto";
+        removeBtn.style.fontSize = "0.7rem";
+        removeBtn.onclick = () => {
+          m.setMap(null);
+          markers.splice(i, 1);
+          updateMarkerList();
+        };
+
+        container.appendChild(title);
+        container.appendChild(removeBtn);
+        list.appendChild(container);
       });
     }
 
-    // 자동 로그인 상태 유지
     window.onload = () => {
       if (loggedInUser) {
         applyLogin(loggedInUser);
