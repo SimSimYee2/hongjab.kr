@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>여행객 혼잡도 지도</title>
+  <title>그룹 호장도 지도</title>
   <script async defer
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDdzoAa5qdInQ1YuXV97hfWrxfE_y9rN3o&callback=initMap">
   </script>
@@ -13,27 +13,20 @@
     .main-content { display: flex; height: calc(100vh - 60px); }
     #map { flex: 2; }
     .sidebar {
-      flex: 1;
-      background: #1e1e1e;
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      border-left: 1px solid #333;
+      flex: 1; background: #1e1e1e; padding: 1rem; display: flex; flex-direction: column;
+      justify-content: space-between; border-left: 1px solid #333;
     }
     .legend, .control-panel { display: flex; flex-direction: column; gap: 1rem; }
     .legend-item { display: flex; align-items: center; gap: 0.5rem; }
     .legend-color { width: 16px; height: 16px; border-radius: 50%; }
     .low { background-color: green; } .medium { background-color: orange; } .high { background-color: red; }
-    input { margin: 0.2rem 0; padding: 0.3rem; width: 90%; }
-    button { padding: 0.4rem; margin-top: 0.3rem; }
+    input, button { padding: 0.5rem; margin: 0.2rem 0; width: 90%; }
     #searchBox, #signupBox, #loginBox { display: none; margin-bottom: 1rem; }
     .user-info { font-weight: bold; margin-bottom: 1rem; color: lightgreen; }
   </style>
 </head>
-
 <body>
-  <header>여행객 혼잡도 지도</header>
+  <header>여행객 호장도 지도</header>
 
   <div style="display: flex; justify-content: center; gap: 1rem; padding: 0.5rem; background: #1e1e1e;">
     <button onclick="toggleSignupBox()">회원가입</button>
@@ -41,20 +34,16 @@
     <button onclick="logoutUser()">로그아웃</button>
   </div>
 
-  <!-- 회원가입 폼 -->
-  <div id="signupBox" style="padding: 1rem;">
-    <h3>회원가입</h3>
-    <input type="text" id="name" placeholder="이름" /><br />
-    <input type="email" id="email" placeholder="이메일" /><br />
-    <input type="password" id="password" placeholder="비밀번호" /><br />
+  <div id="signupBox">
+    <input type="text" id="name" placeholder="이름" />
+    <input type="email" id="email" placeholder="이메일" />
+    <input type="password" id="password" placeholder="비밀번호" />
     <button onclick="registerUser()">가입</button>
   </div>
 
-  <!-- 로그인 폼 -->
-  <div id="loginBox" style="padding: 1rem;">
-    <h3>로그인</h3>
-    <input type="email" id="loginEmail" placeholder="이메일" /><br />
-    <input type="password" id="loginPassword" placeholder="비밀번호" /><br />
+  <div id="loginBox">
+    <input type="email" id="loginEmail" placeholder="이메일" />
+    <input type="password" id="loginPassword" placeholder="비밀번호" />
     <button onclick="loginUser()">로그인</button>
   </div>
 
@@ -76,168 +65,190 @@
         </div>
 
         <div>
-          <label>혼잡도 수동 조절:</label><br />
+          <label>호장도 수동 조절:</label><br />
           <input type="range" min="0" max="2" step="1" value="1" oninput="onSliderChange(this.value)">
         </div>
 
-        <button onclick="toggleSearchBox()">혼잡도 검색</button>
+        <button onclick="toggleSearchBox()">호장도 검색</button>
       </div>
       <canvas id="congestionChart" width="200" height="200"></canvas>
     </div>
   </div>
 
-  <script>
-    const markerColors = {
-      low: "http://maps.google.com/mapfiles/ms/icons/green-dot.png",
-      medium: "http://maps.google.com/mapfiles/ms/icons/orange-dot.png",
-      high: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
-    };
-    const congestionLevels = ["low", "medium", "high"];
-    let map, chart;
-    let markers = [];
-    let circles = [];
-    let locations = [
-      { name: "서울", lat: 37.5665, lng: 126.9780 },
-      { name: "부산", lat: 35.1796, lng: 129.0756 },
-      { name: "제주", lat: 33.4996, lng: 126.5312 }
-    ];
+<script>
+const markerColors = {
+  low: "http://maps.google.com/mapfiles/ms/icons/green-dot.png",
+  medium: "http://maps.google.com/mapfiles/ms/icons/orange-dot.png",
+  high: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
+};
+const congestionLevels = ["low", "medium", "high"];
+let map, chart;
+let markers = [], circles = [];
+let locations = [
+  { name: "서울", lat: 37.5665, lng: 126.9780 },
+  { name: "부산", lat: 35.1796, lng: 129.0756 },
+  { name: "제주", lat: 33.4996, lng: 126.5312 }
+];
 
-    function initMap() {
-      map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: 35.9078, lng: 127.7669 }, zoom: 7
-      });
-      locations.forEach((loc) => addMarkerWithCircle(loc, "medium"));
-      initChart(locations.map(l => l.name), locations.map(() => 33));
-      updateUserInfo();
+function initMap() {
+  map = new google.maps.Map(document.getElementById("map"), {
+    center: { lat: 35.9078, lng: 127.7669 }, zoom: 7
+  });
+  locations.forEach(loc => addMarkerWithCircle(loc, "medium"));
+  initChart(locations.map(l => l.name), locations.map(() => 33));
+  updateUserInfo();
+}
+
+function addMarkerWithCircle(location, level) {
+  const marker = new google.maps.Marker({
+    position: { lat: location.lat, lng: location.lng },
+    map,
+    title: `${location.name} (호장도: ${level})`,
+    icon: markerColors[level]
+  });
+  const circle = new google.maps.Circle({
+    strokeColor: markerColors[level],
+    strokeOpacity: 0.8,
+    strokeWeight: 2,
+    fillColor: markerColors[level],
+    fillOpacity: 0.2,
+    map,
+    center: { lat: location.lat, lng: location.lng },
+    radius: 1000
+  });
+  markers.push(marker);
+  circles.push(circle);
+}
+
+function clearMarkersAndCircles() {
+  markers.forEach(m => m.setMap(null));
+  circles.forEach(c => c.setMap(null));
+  markers = [];
+  circles = [];
+}
+
+function updateMarkers(level) {
+  clearMarkersAndCircles();
+  locations.forEach(loc => addMarkerWithCircle(loc, level));
+  updateChart(locations.map(() => Math.floor(Math.random() * 100)));
+}
+
+function onSliderChange(value) {
+  updateMarkers(congestionLevels[value]);
+}
+
+function initChart(labels, values) {
+  const ctx = document.getElementById('congestionChart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels,
+      datasets: [{
+        label: '혼잡도 비율',
+        data: values,
+        backgroundColor: ['green', 'orange', 'red'],
+        borderColor: '#333',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      plugins: { legend: { labels: { color: 'white' } } }
     }
+  });
+}
 
-    function addMarkerWithCircle(location, level) {
-      const marker = new google.maps.Marker({
-        position: { lat: location.lat, lng: location.lng },
-        map,
-        title: `${location.name} (혼잡도: ${level})`,
-        icon: markerColors[level]
-      });
-      const circle = new google.maps.Circle({
-        strokeColor: markerColors[level],
-        strokeOpacity: 0.8,
-        strokeWeight: 2,
-        fillColor: markerColors[level],
-        fillOpacity: 0.2,
-        map,
-        center: { lat: location.lat, lng: location.lng },
-        radius: 1000
-      });
-      markers.push(marker);
-      circles.push(circle);
-    }
+function updateChart(values) {
+  chart.data.datasets[0].data = values;
+  chart.update();
+}
 
-    function clearMarkersAndCircles() {
-      markers.forEach(m => m.setMap(null));
-      circles.forEach(c => c.setMap(null));
-      markers = [];
-      circles = [];
-    }
+function toggleSearchBox() {
+  const box = document.getElementById("searchBox");
+  box.style.display = box.style.display === "none" ? "block" : "none";
+}
 
-    function updateMarkers(level) {
-      clearMarkersAndCircles();
-      locations.forEach((loc) => addMarkerWithCircle(loc, level));
-      updateChart(locations.map(() => Math.floor(Math.random() * 100)));
-    }
+async function searchLocation() {
+  const query = document.getElementById("searchInput").value.trim();
+  if (!query) return alert("검색어를 입력해주세요.");
 
-    function onSliderChange(value) {
-      updateMarkers(congestionLevels[value]);
-    }
+  const apiKey = "AIzaSyDdzoAa5qdInQ1YuXV97hfWrxfE_y9rN3o";
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${apiKey}`;
 
-    function initChart(labels, values) {
-      const ctx = document.getElementById('congestionChart').getContext('2d');
-      chart = new Chart(ctx, {
-        type: 'pie',
-        data: {
-          labels,
-          datasets: [{
-            label: '혼잡도 비율',
-            data: values,
-            backgroundColor: ['green', 'orange', 'red'],
-            borderColor: '#333',
-            borderWidth: 1
-          }]
-        },
-        options: {
-          plugins: { legend: { labels: { color: 'white' } } }
-        }
-      });
-    }
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data.results || data.results.length === 0) return alert("장소를 찾을 수 없습니다.");
 
-    function updateChart(values) {
-      chart.data.datasets[0].data = values;
-      chart.update();
-    }
+    const result = data.results[0];
+    const name = result.formatted_address || query;
+    const lat = result.geometry.location.lat;
+    const lng = result.geometry.location.lng;
 
-    function toggleSearchBox() {
-      const box = document.getElementById("searchBox");
-      box.style.display = box.style.display === "none" ? "block" : "none";
-    }
+    if (locations.some(loc => loc.lat === lat && loc.lng === lng)) return alert("이미 추가된 장소입니다.");
 
-    // 회원가입
-    function toggleSignupBox() {
-      document.getElementById("signupBox").style.display = 
-        document.getElementById("signupBox").style.display === "none" ? "block" : "none";
-    }
+    const newLocation = { name, lat, lng };
+    locations.push(newLocation);
+    addMarkerWithCircle(newLocation, "medium");
+    map.setCenter({ lat, lng });
+    map.setZoom(14);
+    updateChart(locations.map(() => Math.floor(Math.random() * 100)));
+    chart.data.labels = locations.map(loc => loc.name);
+    chart.update();
+    document.getElementById("searchInput").value = "";
+  } catch (e) {
+    console.error(e);
+    alert("장소 검색 중 오류 발생");
+  }
+}
 
-    function registerUser() {
-      const name = document.getElementById("name").value.trim();
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value.trim();
+function toggleSignupBox() {
+  document.getElementById("signupBox").style.display =
+    document.getElementById("signupBox").style.display === "none" ? "block" : "none";
+}
 
-      if (!name || !email || !password) return alert("모든 항목을 입력해주세요.");
-      if (!email.includes("@") || password.length < 4) return alert("이메일/비밀번호 형식 확인");
+function registerUser() {
+  const name = document.getElementById("name").value.trim();
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
+  if (!name || !email || !password) return alert("모든 항목을 입력해주세요.");
+  const user = { name, email, password };
+  localStorage.setItem("user_" + email, JSON.stringify(user));
+  alert("회원가입 완료");
+  document.getElementById("signupBox").style.display = "none";
+}
 
-      const user = { name, email, password };
-      localStorage.setItem("user_" + email, JSON.stringify(user));
-      alert("회원가입 완료");
-      document.getElementById("signupBox").style.display = "none";
-    }
+function toggleLoginBox() {
+  document.getElementById("loginBox").style.display =
+    document.getElementById("loginBox").style.display === "none" ? "block" : "none";
+}
 
-    // 로그인
-    function toggleLoginBox() {
-      document.getElementById("loginBox").style.display = 
-        document.getElementById("loginBox").style.display === "none" ? "block" : "none";
-    }
+function loginUser() {
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value.trim();
+  const user = JSON.parse(localStorage.getItem("user_" + email));
+  if (!user || user.password !== password) return alert("이메일 또는 비밀번호가 일치하지 않습니다.");
+  localStorage.setItem("currentUser", email);
+  alert("로그인 성공!");
+  document.getElementById("loginBox").style.display = "none";
+  updateUserInfo();
+}
 
-    function loginUser() {
-      const email = document.getElementById("loginEmail").value.trim();
-      const password = document.getElementById("loginPassword").value.trim();
-      const user = JSON.parse(localStorage.getItem("user_" + email));
+function logoutUser() {
+  localStorage.removeItem("currentUser");
+  updateUserInfo();
+  alert("로그아웃 되었습니다.");
+}
 
-      if (!user || user.password !== password) {
-        alert("이메일 또는 비밀번호가 일치하지 않습니다.");
-        return;
-      }
-
-      localStorage.setItem("currentUser", email);
-      alert("로그인 성공!");
-      document.getElementById("loginBox").style.display = "none";
-      updateUserInfo();
-    }
-
-    function logoutUser() {
-      localStorage.removeItem("currentUser");
-      updateUserInfo();
-      alert("로그아웃 되었습니다.");
-    }
-
-    function updateUserInfo() {
-      const email = localStorage.getItem("currentUser");
-      const infoDiv = document.getElementById("userInfo");
-
-      if (email) {
-        const user = JSON.parse(localStorage.getItem("user_" + email));
-        infoDiv.textContent = `환영합니다, ${user.name}님!`;
-      } else {
-        infoDiv.textContent = "로그인되지 않았습니다";
-      }
-    }
-  </script>
+function updateUserInfo() {
+  const email = localStorage.getItem("currentUser");
+  const infoDiv = document.getElementById("userInfo");
+  if (email) {
+    const user = JSON.parse(localStorage.getItem("user_" + email));
+    infoDiv.textContent = `환영합니다, ${user.name}님!`;
+  } else {
+    infoDiv.textContent = "로그인되지 않았습니다";
+  }
+}
+</script>
 </body>
 </html>
