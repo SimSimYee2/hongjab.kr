@@ -3,42 +3,47 @@
 <head>
   <meta charset="UTF-8" />
   <title>여행객 혼잡도 지도</title>
-  <!-- Google Maps API key 사용 시 올바른 API 키와 referrer 설정 필요 -->
-  <script async defer
-    src="https://maps.googleapis.com/maps/api/js?key=YOUR_AUTHORIZED_API_KEY&callback=initMap">
-  </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDdzoAa5qdInQ1YuXV97hfWrxfE_y9rN3o&callback=initMap">
+  </script>
   <style>
     body { margin: 0; background-color: #121212; color: white; font-family: 'Segoe UI', sans-serif; }
     header { background: #1e1e1e; padding: 1rem; text-align: center; font-size: 1.5rem; font-weight: bold; }
-    .main-content { display: flex; height: calc(100vh - 60px); }
-    #map { flex: 2; }
+    .top-bar {
+      display: flex; justify-content: center; gap: 1rem; padding: 0.5rem; background: #1e1e1e;
+    }
+    .main-content { display: none; height: calc(100vh - 60px); }
+    #map { flex: 2; height: 100%; }
     .sidebar {
       flex: 1; background: #1e1e1e; padding: 1rem; display: flex; flex-direction: column;
       justify-content: space-between; border-left: 1px solid #333;
     }
-    .legend, .control-panel { display: flex; flex-direction: column; gap: 1rem; }
-    .legend-item { display: flex; align-items: center; gap: 0.5rem; }
+    .legend-item { display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0; }
     .legend-color { width: 16px; height: 16px; border-radius: 50%; }
     .low { background-color: green; } .medium { background-color: orange; } .high { background-color: red; }
-    input, button { padding: 0.5rem; margin: 0.2rem 0; width: 90%; }
-    #searchBox, #signupBox, #loginBox {
-      display: none; margin-bottom: 1rem; background: #2a2a2a; padding: 1rem; border-radius: 8px;
-      transition: all 0.3s ease-in-out; opacity: 0; transform: scale(0.95);
+    input, button {
+      padding: 0.5rem; margin: 0.3rem 0; width: 90%;
+    }
+    #signupBox, #loginBox {
+      display: none; margin: 1rem auto; background: #2a2a2a; padding: 1rem; border-radius: 8px;
+      width: 300px; transition: all 0.3s ease-in-out; opacity: 0; transform: scale(0.95);
     }
     #signupBox.show, #loginBox.show {
       display: block; opacity: 1; transform: scale(1);
     }
-    .user-info { font-weight: bold; margin-bottom: 1rem; color: lightgreen; }
-    .requires-login *:disabled { opacity: 0.5; pointer-events: none; }
+    .user-info { font-weight: bold; margin-bottom: 1rem; color: lightgreen; text-align: center; }
+    .slider-container { margin: 1rem 0; }
+    .slider-container label { display: block; margin-bottom: 0.5rem; }
   </style>
 </head>
 <body>
   <header>여행객 혼잡도 지도</header>
-  <div style="display: flex; justify-content: center; gap: 1rem; padding: 0.5rem; background: #1e1e1e;">
+
+  <!-- 버튼 영역 -->
+  <div class="top-bar" id="buttonArea">
     <button onclick="toggleBox('signupBox')">회원가입</button>
     <button onclick="toggleBox('loginBox')">로그인</button>
-    <button onclick="logoutUser()">로그아웃</button>
   </div>
 
   <!-- 회원가입 상자 -->
@@ -57,116 +62,105 @@
     <button onclick="loginUser(document.getElementById('loginUser').value)">로그인</button>
   </div>
 
-  <!-- 메인 콘텐츠 영역 -->
-  <div class="main-content">
-    <div id="map">지도 영역</div>
+  <!-- 메인 콘텐츠 (지도 포함) -->
+  <div class="main-content" id="mainContent">
+    <div id="map"></div>
     <div class="sidebar">
-      <div class="legend">
+      <div>
+        <div class="user-info" id="userInfo"></div>
+        <div class="slider-container">
+          <label for="congestionSlider">혼잡도 조절</label>
+          <input type="range" min="1" max="3" value="2" id="congestionSlider" onchange="updateCongestion()">
+          <div id="congestionLevel" style="margin-top: 0.5rem;">중간</div>
+        </div>
+
         <div class="legend-item"><div class="legend-color low"></div><span>낮음</span></div>
         <div class="legend-item"><div class="legend-color medium"></div><span>중간</span></div>
         <div class="legend-item"><div class="legend-color high"></div><span>높음</span></div>
       </div>
-      <div class="control-panel">
-        <!-- 추가적인 컨트롤 요소들을 넣을 수 있음 -->
-        <button onclick="alert('검색 기능 구현 중')">검색</button>
-      </div>
+
+      <button onclick="logoutUser()">로그아웃</button>
     </div>
   </div>
 
   <script>
     let loggedIn = false;
+    let map;
+    let marker;
 
-    // 회원가입 박스와 로그인 박스 토글 함수
     function toggleBox(id) {
       const box = document.getElementById(id);
       const isShown = box.classList.contains('show');
-      
-      // 다른 박스 모두 닫기
-      document.querySelectorAll('#signupBox, #loginBox').forEach(el => {
-        el.classList.remove('show');
-      });
-      
-      // 클릭한 항목만 열기
-      if (!isShown) {
-        box.classList.add('show');
-      }
+      document.querySelectorAll('#signupBox, #loginBox').forEach(el => el.classList.remove('show'));
+      if (!isShown) box.classList.add('show');
     }
 
-    // 간단한 회원가입 처리 (실제 구현 시 백엔드와 연동)
     function signupUser() {
       const id = document.getElementById('signupId').value;
       const pw = document.getElementById('signupPw').value;
-      if(id && pw) {
-        alert('회원가입이 완료되었습니다. 이제 로그인 해주세요.');
+      if (id && pw) {
+        alert('회원가입 완료! 로그인해주세요.');
         document.getElementById('signupBox').classList.remove('show');
       } else {
-        alert('아이디와 비밀번호를 입력해주세요.');
+        alert('아이디와 비밀번호를 입력하세요.');
       }
     }
 
-    // 간단한 로그인 처리 (실제 구현 시 백엔드와 연동)
     function loginUser(username) {
-      if(username) {
+      if (username) {
         loggedIn = true;
-        alert(username + '님, 환영합니다!');
-        // 사용자 정보 표시
-        const userInfo = document.createElement('div');
-        userInfo.className = 'user-info';
-        userInfo.innerText = username + " 님";
-        if(document.querySelector('.sidebar')) {
-          // 기존 사용자 정보가 있다면 제거 후 추가
-          const existingInfo = document.querySelector('.sidebar .user-info');
-          if(existingInfo) existingInfo.remove();
-          document.querySelector('.sidebar').prepend(userInfo);
+        alert(username + '님 환영합니다!');
+        document.getElementById('userInfo').innerText = `${username} 님`;
+        document.getElementById('mainContent').style.display = 'flex';
+        document.getElementById('signupBox').style.display = 'none';
+        document.getElementById('loginBox').style.display = 'none';
+        document.getElementById('buttonArea').style.display = 'none';
+
+        if (typeof google !== 'undefined') {
+          initMap();
         }
-        // 기능 활성화: 예제에서는 requires-login 클래스를 가진 요소에 추가된 disabled 처리 해제
-        document.querySelectorAll('.requires-login').forEach(el => {
-          el.classList.remove('disabled');
-        });
-        document.getElementById('map').classList.remove('requires-login');
-        document.getElementById('loginBox').classList.remove('show');
       } else {
-        alert('아이디를 입력해주세요.');
+        alert('아이디를 입력하세요.');
       }
     }
 
-    // 로그아웃 처리 함수
     function logoutUser() {
-      if(loggedIn) {
-        loggedIn = false;
-        alert('로그아웃되었습니다.');
-        // 사용자 정보 제거
-        const userInfo = document.querySelector('.user-info');
-        if(userInfo) {
-          userInfo.remove();
-        }
-        // 기능 비활성화: 예제에서는 requires-login 클래스를 가진 요소에 disabled 처리
-        document.querySelectorAll('.requires-login').forEach(el => {
-          el.classList.add('disabled');
-        });
-        document.getElementById('map').classList.add('requires-login');
-      } else {
-        alert('현재 로그인 상태가 아닙니다.');
+      loggedIn = false;
+      alert('로그아웃되었습니다.');
+      document.getElementById('mainContent').style.display = 'none';
+      document.getElementById('buttonArea').style.display = 'flex';
+      document.getElementById('userInfo').innerText = '';
+    }
+
+    function updateCongestion() {
+      const value = parseInt(document.getElementById('congestionSlider').value);
+      const levelText = { 1: '낮음', 2: '중간', 3: '높음' };
+      document.getElementById('congestionLevel').innerText = levelText[value];
+
+      if (marker) {
+        const colorMap = {
+          1: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png',
+          2: 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png',
+          3: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
+        };
+        marker.setIcon(colorMap[value]);
       }
     }
 
-    // 초기 구글 지도 초기화 함수 (필요 시 실제 지도 설정 추가)
     function initMap() {
-      // 지도 생성 예시
-      const mapOptions = {
-        center: { lat: 37.5665, lng: 126.9780 },
-        zoom: 12
-      };
-      const mapDiv = document.getElementById('map');
-      if(mapDiv) {
-        new google.maps.Map(mapDiv, mapOptions);
-      }
+      const seoul = { lat: 37.5665, lng: 126.9780 };
+      map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 12,
+        center: seoul,
+      });
+
+      marker = new google.maps.Marker({
+        position: seoul,
+        map,
+        title: "서울 중심",
+        icon: 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png' // 중간 기본값
+      });
     }
-    
-    // 구글 지도 API가 로드되면 initMap()이 자동 호출됩니다.
-  </script>
-  <script>
-    console.warn("[경고] 현재 Google Maps API 키가 sandbox 환경에서 허용되지 않아 지도가 로드되지 않을 수 있습니다.\nGoogle Cloud Console에서 API 키의 'HTTP referrers' 제한 설정을 수정하거나 \n테스트를 위한 localhost/무제한 키를 사용하십시오.");
   </script>
 </body>
 </html>
