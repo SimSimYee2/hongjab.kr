@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>여행객 혼잡도 지도</title>
-  <!-- Google Maps API key removed to avoid RefererNotAllowedMapError -->
-  <!-- Please add an authorized API key in the URL below -->
+  <!-- Google Maps API key 사용 시 올바른 API 키와 referrer 설정 필요 -->
   <script async defer
     src="https://maps.googleapis.com/maps/api/js?key=YOUR_AUTHORIZED_API_KEY&callback=initMap">
   </script>
@@ -36,38 +35,40 @@
 </head>
 <body>
   <header>여행객 혼잡도 지도</header>
-
   <div style="display: flex; justify-content: center; gap: 1rem; padding: 0.5rem; background: #1e1e1e;">
     <button onclick="toggleBox('signupBox')">회원가입</button>
     <button onclick="toggleBox('loginBox')">로그인</button>
     <button onclick="logoutUser()">로그아웃</button>
   </div>
 
+  <!-- 회원가입 상자 -->
+  <div id="signupBox">
+    <h3>회원가입</h3>
+    <input type="text" placeholder="아이디" id="signupId" />
+    <input type="password" placeholder="비밀번호" id="signupPw" />
+    <button onclick="signupUser()">가입하기</button>
+  </div>
+
+  <!-- 로그인 상자 -->
+  <div id="loginBox">
+    <h3>로그인</h3>
+    <input type="text" placeholder="아이디" id="loginUser" />
+    <input type="password" placeholder="비밀번호" id="loginPw" />
+    <button onclick="loginUser(document.getElementById('loginUser').value)">로그인</button>
+  </div>
+
+  <!-- 메인 콘텐츠 영역 -->
   <div class="main-content">
-    <div id="map"></div>
+    <div id="map">지도 영역</div>
     <div class="sidebar">
       <div class="legend">
-        <div class="legend-item"><div class="legend-color low"></div> 적음</div>
-        <div class="legend-item"><div class="legend-color medium"></div> 보통</div>
-        <div class="legend-item"><div class="legend-color high"></div> 많음</div>
+        <div class="legend-item"><div class="legend-color low"></div><span>낮음</span></div>
+        <div class="legend-item"><div class="legend-color medium"></div><span>중간</span></div>
+        <div class="legend-item"><div class="legend-color high"></div><span>높음</span></div>
       </div>
       <div class="control-panel">
-        <div id="searchBox" class="requires-login">
-          <input type="text" placeholder="장소 검색" />
-          <button>검색</button>
-        </div>
-        <div id="signupBox">
-          <h3>회원가입</h3>
-          <input type="text" placeholder="아이디" />
-          <input type="password" placeholder="비밀번호" />
-          <button onclick="alert('회원가입 완료!')">가입하기</button>
-        </div>
-        <div id="loginBox">
-          <h3>로그인</h3>
-          <input type="text" placeholder="아이디" id="loginUser" />
-          <input type="password" placeholder="비밀번호" />
-          <button onclick="loginUser(document.getElementById('loginUser').value)">로그인</button>
-        </div>
+        <!-- 추가적인 컨트롤 요소들을 넣을 수 있음 -->
+        <button onclick="alert('검색 기능 구현 중')">검색</button>
       </div>
     </div>
   </div>
@@ -75,54 +76,95 @@
   <script>
     let loggedIn = false;
 
-    // 로그인 상태일 때만 상호작용을 가능하게 함
+    // 회원가입 박스와 로그인 박스 토글 함수
     function toggleBox(id) {
       const box = document.getElementById(id);
       const isShown = box.classList.contains('show');
-
-      // 닫기
+      
+      // 다른 박스 모두 닫기
       document.querySelectorAll('#signupBox, #loginBox').forEach(el => {
         el.classList.remove('show');
       });
-
+      
       // 클릭한 항목만 열기
       if (!isShown) {
         box.classList.add('show');
       }
     }
 
-    // 로그아웃 처리
-    function logoutUser() {
-      loggedIn = false;
-      alert('로그아웃되었습니다.');
-      document.querySelector('.user-info')?.remove(); // 사용자 정보 제거
-      document.querySelectorAll('.requires-login').forEach(el => {
-        el.classList.add('disabled');
-      });
-      document.getElementById('map')?.classList.add('requires-login');
+    // 간단한 회원가입 처리 (실제 구현 시 백엔드와 연동)
+    function signupUser() {
+      const id = document.getElementById('signupId').value;
+      const pw = document.getElementById('signupPw').value;
+      if(id && pw) {
+        alert('회원가입이 완료되었습니다. 이제 로그인 해주세요.');
+        document.getElementById('signupBox').classList.remove('show');
+      } else {
+        alert('아이디와 비밀번호를 입력해주세요.');
+      }
     }
 
-    // 로그인 처리
+    // 간단한 로그인 처리 (실제 구현 시 백엔드와 연동)
     function loginUser(username) {
-      loggedIn = true;
-      alert(`${username}님, 환영합니다!`);
-      // 사용자 정보 표시
-      const userInfo = document.createElement('div');
-      userInfo.className = 'user-info';
-      userInfo.innerText = `${username} 님`;
-      document.querySelector('.sidebar')?.prepend(userInfo);
-      // 기능 활성화
-      document.querySelectorAll('.requires-login').forEach(el => {
-        el.classList.remove('disabled');
-      });
-      document.getElementById('map')?.classList.remove('requires-login');
+      if(username) {
+        loggedIn = true;
+        alert(username + '님, 환영합니다!');
+        // 사용자 정보 표시
+        const userInfo = document.createElement('div');
+        userInfo.className = 'user-info';
+        userInfo.innerText = username + " 님";
+        if(document.querySelector('.sidebar')) {
+          // 기존 사용자 정보가 있다면 제거 후 추가
+          const existingInfo = document.querySelector('.sidebar .user-info');
+          if(existingInfo) existingInfo.remove();
+          document.querySelector('.sidebar').prepend(userInfo);
+        }
+        // 기능 활성화: 예제에서는 requires-login 클래스를 가진 요소에 추가된 disabled 처리 해제
+        document.querySelectorAll('.requires-login').forEach(el => {
+          el.classList.remove('disabled');
+        });
+        document.getElementById('map').classList.remove('requires-login');
+        document.getElementById('loginBox').classList.remove('show');
+      } else {
+        alert('아이디를 입력해주세요.');
+      }
     }
 
-    // 예시: 로그인 후 지도, 검색 기능 활성화
-    // 예를 들어, 로그인 성공 후 검색을 활성화할 수 있습니다.
-    // loginUser('홍길동'); // 로그인 후 사용
-  </script>
+    // 로그아웃 처리 함수
+    function logoutUser() {
+      if(loggedIn) {
+        loggedIn = false;
+        alert('로그아웃되었습니다.');
+        // 사용자 정보 제거
+        const userInfo = document.querySelector('.user-info');
+        if(userInfo) {
+          userInfo.remove();
+        }
+        // 기능 비활성화: 예제에서는 requires-login 클래스를 가진 요소에 disabled 처리
+        document.querySelectorAll('.requires-login').forEach(el => {
+          el.classList.add('disabled');
+        });
+        document.getElementById('map').classList.add('requires-login');
+      } else {
+        alert('현재 로그인 상태가 아닙니다.');
+      }
+    }
 
+    // 초기 구글 지도 초기화 함수 (필요 시 실제 지도 설정 추가)
+    function initMap() {
+      // 지도 생성 예시
+      const mapOptions = {
+        center: { lat: 37.5665, lng: 126.9780 },
+        zoom: 12
+      };
+      const mapDiv = document.getElementById('map');
+      if(mapDiv) {
+        new google.maps.Map(mapDiv, mapOptions);
+      }
+    }
+    
+    // 구글 지도 API가 로드되면 initMap()이 자동 호출됩니다.
+  </script>
   <script>
     console.warn("[경고] 현재 Google Maps API 키가 sandbox 환경에서 허용되지 않아 지도가 로드되지 않을 수 있습니다.\nGoogle Cloud Console에서 API 키의 'HTTP referrers' 제한 설정을 수정하거나 \n테스트를 위한 localhost/무제한 키를 사용하십시오.");
   </script>
