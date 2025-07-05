@@ -43,10 +43,86 @@
     <button onclick="logoutUser()">로그아웃</button>
   </div>
 
-  <!-- The rest of the HTML remains unchanged -->
-  <!-- ... -->
+  <div class="main-content">
+    <div id="map"></div>
+    <div class="sidebar">
+      <div class="legend">
+        <div class="legend-item"><div class="legend-color low"></div> 적음</div>
+        <div class="legend-item"><div class="legend-color medium"></div> 보통</div>
+        <div class="legend-item"><div class="legend-color high"></div> 많음</div>
+      </div>
+      <div class="control-panel">
+        <div id="searchBox" class="requires-login">
+          <input type="text" placeholder="장소 검색" />
+          <button>검색</button>
+        </div>
+        <div id="signupBox">
+          <h3>회원가입</h3>
+          <input type="text" placeholder="아이디" />
+          <input type="password" placeholder="비밀번호" />
+          <button onclick="alert('회원가입 완료!')">가입하기</button>
+        </div>
+        <div id="loginBox">
+          <h3>로그인</h3>
+          <input type="text" placeholder="아이디" id="loginUser" />
+          <input type="password" placeholder="비밀번호" />
+          <button onclick="loginUser(document.getElementById('loginUser').value)">로그인</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-  <!-- Instructions to developer/user -->
+  <script>
+    let loggedIn = false;
+
+    // 로그인 상태일 때만 상호작용을 가능하게 함
+    function toggleBox(id) {
+      const box = document.getElementById(id);
+      const isShown = box.classList.contains('show');
+
+      // 닫기
+      document.querySelectorAll('#signupBox, #loginBox').forEach(el => {
+        el.classList.remove('show');
+      });
+
+      // 클릭한 항목만 열기
+      if (!isShown) {
+        box.classList.add('show');
+      }
+    }
+
+    // 로그아웃 처리
+    function logoutUser() {
+      loggedIn = false;
+      alert('로그아웃되었습니다.');
+      document.querySelector('.user-info')?.remove(); // 사용자 정보 제거
+      document.querySelectorAll('.requires-login').forEach(el => {
+        el.classList.add('disabled');
+      });
+      document.getElementById('map')?.classList.add('requires-login');
+    }
+
+    // 로그인 처리
+    function loginUser(username) {
+      loggedIn = true;
+      alert(`${username}님, 환영합니다!`);
+      // 사용자 정보 표시
+      const userInfo = document.createElement('div');
+      userInfo.className = 'user-info';
+      userInfo.innerText = `${username} 님`;
+      document.querySelector('.sidebar')?.prepend(userInfo);
+      // 기능 활성화
+      document.querySelectorAll('.requires-login').forEach(el => {
+        el.classList.remove('disabled');
+      });
+      document.getElementById('map')?.classList.remove('requires-login');
+    }
+
+    // 예시: 로그인 후 지도, 검색 기능 활성화
+    // 예를 들어, 로그인 성공 후 검색을 활성화할 수 있습니다.
+    // loginUser('홍길동'); // 로그인 후 사용
+  </script>
+
   <script>
     console.warn("[경고] 현재 Google Maps API 키가 sandbox 환경에서 허용되지 않아 지도가 로드되지 않을 수 있습니다.\nGoogle Cloud Console에서 API 키의 'HTTP referrers' 제한 설정을 수정하거나 \n테스트를 위한 localhost/무제한 키를 사용하십시오.");
   </script>
