@@ -3,26 +3,43 @@
 <head>
   <meta charset="UTF-8" />
   <title>여행객 혼잡도 지도</title>
+
+  <!-- Chart.js 불러오기 (추후 사용 가능) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Google Maps API (Places 포함) -->
   <script async defer
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDdzoAa5qdInQ1YuXV97hfWrxfE_y9rN3o&libraries=places&callback=initMap">
   </script>
+
+  <!-- 스타일 정의 -->
   <style>
+    /* 전체 레이아웃 및 테마 */
     body { margin: 0; background-color: #121212; color: white; font-family: 'Segoe UI', sans-serif; }
     header { background: #1e1e1e; padding: 1rem; text-align: center; font-size: 1.5rem; font-weight: bold; }
+
+    /* 로그인/회원가입 상단 버튼 바 */
     .top-bar { display: flex; justify-content: center; gap: 1rem; padding: 0.5rem; background: #1e1e1e; }
+
+    /* 지도 및 사이드바 영역 */
     .main-content { display: none; height: calc(100vh - 60px); }
     #map { flex: 2; height: 100%; }
     .sidebar {
       flex: 1; background: #1e1e1e; padding: 1rem; display: flex; flex-direction: column;
       justify-content: space-between; border-left: 1px solid #333;
     }
+
+    /* 범례 및 마커 리스트 항목 스타일 */
     .legend-item, .marker-item {
       display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0; font-size: 0.9rem;
     }
     .legend-color { width: 16px; height: 16px; border-radius: 50%; }
     .low { background-color: green; } .medium { background-color: orange; } .high { background-color: red; }
+
+    /* 입력창과 버튼 공통 스타일 */
     input, button { padding: 0.5rem; margin: 0.3rem 0; width: 90%; }
+
+    /* 회원가입 및 로그인 박스 */
     #signupBox, #loginBox {
       display: none; margin: 1rem auto; background: #2a2a2a; padding: 1rem; border-radius: 8px;
       width: 300px; transition: all 0.3s ease-in-out; opacity: 0; transform: scale(0.95);
@@ -30,19 +47,25 @@
     #signupBox.show, #loginBox.show {
       display: block; opacity: 1; transform: scale(1);
     }
+
     .user-info { font-weight: bold; margin-bottom: 1rem; color: lightgreen; text-align: center; }
     .slider-container { margin: 1rem 0; }
+
+    /* 마커 리스트 스크롤 영역 */
     #markerList { max-height: 150px; overflow-y: auto; margin-top: 1rem; border-top: 1px solid #333; padding-top: 0.5rem; }
   </style>
 </head>
 <body>
+  <!-- 상단 헤더 -->
   <header>여행객 혼잡도 지도</header>
 
+  <!-- 로그인 및 회원가입 버튼 영역 -->
   <div class="top-bar" id="buttonArea">
     <button onclick="toggleBox('signupBox')">회원가입</button>
     <button onclick="toggleBox('loginBox')">로그인</button>
   </div>
 
+  <!-- 회원가입 폼 -->
   <div id="signupBox">
     <h3>회원가입</h3>
     <input type="text" placeholder="아이디" id="signupId" />
@@ -50,6 +73,7 @@
     <button onclick="signupUser()">가입하기</button>
   </div>
 
+  <!-- 로그인 폼 -->
   <div id="loginBox">
     <h3>로그인</h3>
     <input type="text" placeholder="아이디" id="loginUser" />
@@ -57,37 +81,47 @@
     <button onclick="loginUser(document.getElementById('loginUser').value)">로그인</button>
   </div>
 
+  <!-- 메인 콘텐츠: 지도와 사이드바 -->
   <div class="main-content" id="mainContent">
     <div id="map"></div>
     <div class="sidebar">
       <div>
+        <!-- 로그인한 사용자 정보 -->
         <div class="user-info" id="userInfo"></div>
+
+        <!-- 장소 검색 -->
         <input type="text" id="searchInput" placeholder="장소 검색" />
         <button onclick="searchPlace()">검색</button>
 
+        <!-- 혼잡도 조절 슬라이더 -->
         <div class="slider-container">
           <label for="congestionSlider">혼잡도 조절</label>
           <input type="range" min="1" max="3" value="2" id="congestionSlider" onchange="updateAllMarkers()">
           <div id="congestionLevel" style="margin-top: 0.5rem;">중간</div>
         </div>
 
+        <!-- 혼잡도 범례 -->
         <div class="legend-item"><div class="legend-color low"></div><span>낮음</span></div>
         <div class="legend-item"><div class="legend-color medium"></div><span>중간</span></div>
         <div class="legend-item"><div class="legend-color high"></div><span>높음</span></div>
 
+        <!-- 마커 리스트 -->
         <div id="markerList"></div>
       </div>
 
+      <!-- 로그아웃 버튼 -->
       <button onclick="logoutUser()">로그아웃</button>
     </div>
   </div>
 
+  <!-- 기능 스크립트 -->
   <script>
     let map;
     let markers = [];
     let autocomplete;
     let loggedInUser = localStorage.getItem("loggedInUser");
 
+    // 로그인/회원가입 박스 토글
     function toggleBox(id) {
       const box = document.getElementById(id);
       const isShown = box.classList.contains('show');
@@ -95,6 +129,7 @@
       if (!isShown) box.classList.add('show');
     }
 
+    // 회원가입 처리 (임시 저장)
     function signupUser() {
       const id = document.getElementById('signupId').value;
       const pw = document.getElementById('signupPw').value;
@@ -106,6 +141,7 @@
       }
     }
 
+    // 로그인 처리
     function loginUser(username) {
       if (username) {
         localStorage.setItem("loggedInUser", username);
@@ -115,6 +151,7 @@
       }
     }
 
+    // 로그인 후 UI 적용
     function applyLogin(username) {
       document.getElementById('userInfo').innerText = `${username} 님`;
       document.getElementById('mainContent').style.display = 'flex';
@@ -123,17 +160,19 @@
       document.getElementById('buttonArea').style.display = 'none';
 
       if (typeof google !== 'undefined') {
-        initMap();
+        initMap(); // 로그인 후 지도 로딩
       }
     }
 
+    // 로그아웃
     function logoutUser() {
       localStorage.removeItem("loggedInUser");
-      location.reload();
+      location.reload(); // 새로고침
     }
 
+    // 지도 초기화 및 Autocomplete 설정
     function initMap() {
-      const center = { lat: 37.5665, lng: 126.9780 };
+      const center = { lat: 37.5665, lng: 126.9780 }; // 서울 중심
       map = new google.maps.Map(document.getElementById("map"), {
         zoom: 12,
         center: center
@@ -144,6 +183,7 @@
       autocomplete.bindTo("bounds", map);
     }
 
+    // 랜덤 혼잡도 생성
     function getRandomCongestionLevel() {
       const level = Math.floor(Math.random() * 3) + 1;
       return {
@@ -152,14 +192,16 @@
       };
     }
 
+    // 혼잡도별 원 색상 반환
     function getCircleColor(level) {
       return {
-        1: '#00ff00',
-        2: '#ffcc00',
-        3: '#ff0000'
+        1: '#00ff00',  // 낮음
+        2: '#ffcc00',  // 중간
+        3: '#ff0000'   // 높음
       }[level];
     }
 
+    // 장소 검색 및 마커 + 원 추가
     function searchPlace() {
       const place = autocomplete.getPlace();
       const input = document.getElementById("searchInput").value;
@@ -170,6 +212,7 @@
           const location = results[0].geometry.location;
           const { level, icon } = getRandomCongestionLevel();
 
+          // 마커 생성
           const marker = new google.maps.Marker({
             map: map,
             position: location,
@@ -178,6 +221,7 @@
           });
           marker.customLevel = level;
 
+          // 원 생성
           const circle = new google.maps.Circle({
             strokeColor: getCircleColor(level),
             strokeOpacity: 0.8,
@@ -190,6 +234,7 @@
           });
           marker.circle = circle;
 
+          // 마커 배열에 추가
           markers.push(marker);
           map.setCenter(location);
           updateMarkerList();
@@ -199,6 +244,7 @@
       });
     }
 
+    // 슬라이더로 전체 마커 혼잡도 변경
     function updateAllMarkers() {
       const value = parseInt(document.getElementById("congestionSlider").value);
       const levelText = { 1: '낮음', 2: '중간', 3: '높음' };
@@ -216,6 +262,7 @@
       });
     }
 
+    // 혼잡도별 마커 아이콘 URL
     function getIconBySlider(level = null) {
       const val = level ?? parseInt(document.getElementById("congestionSlider").value);
       return {
@@ -225,6 +272,7 @@
       }[val];
     }
 
+    // 마커 리스트 UI 업데이트
     function updateMarkerList() {
       const list = document.getElementById("markerList");
       list.innerHTML = "";
@@ -257,6 +305,7 @@
       });
     }
 
+    // 페이지 로드시 자동 로그인 적용
     window.onload = () => {
       if (loggedInUser) {
         applyLogin(loggedInUser);
